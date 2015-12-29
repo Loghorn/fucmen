@@ -11,7 +11,7 @@ fm.on('test_msg', function (data) {
 fm.on('ready', function () {
     var i = 0;
     setInterval(function () {
-        fm.publish('test_msg', ['this is a test', 'message', fm.priority, i++]);
+        fm.publish('test_msg', ['this is a test', 'message', i++]);
     }, 1000);
 
     setTimeout(function () {
