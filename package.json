@@ -2,7 +2,7 @@
   "name": "fucmen",
   "version": "1.0.0",
   "description": "Fully Connected Mesh Network",
-  "main": "index.js",
+  "main": "lib",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -20,5 +20,21 @@
   "bugs": {
     "url": "https://github.com/Loghorn/fucmen/issues"
   },
-  "homepage": "https://github.com/Loghorn/fucmen#readme"
+  "homepage": "https://github.com/Loghorn/fucmen#readme",
+  "dependencies": {
+    "escape-regexp": "^0.0.1",
+    "amp-message": "^0.1.2",
+    "amp": "^0.3.1",
+    "charm": "^1.0.0",
+    "colors": "^1.1.2",
+    "eventemitter2": "^0.4.14",
+    "lodash": "^3.10.1",
+    "node-discover": "^0.4.0",
+    "portfinder": "^0.4.0",
+    "node-uuid": "^1.4.7"
+  },
+  "devDependencies": {
+  },
+  "optionalDependencies": {
+  }
 }
