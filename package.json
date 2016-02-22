@@ -1,6 +1,6 @@
 {
   "name": "fucmen",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Fully Connected Mesh Network",
   "main": "lib",
   "scripts": {
