@@ -1,6 +1,6 @@
 {
   "name": "fucmen",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Fully Connected Mesh Network",
   "main": "lib",
   "scripts": {
@@ -30,7 +30,7 @@
     "eventemitter2": "^0.4.14",
     "lodash": "^3.10.1",
     "node-discover": "loghorn/node-discover",
-    "portfinder": "^1.0.1",
+    "find-free-port": "1.0.2",
     "node-uuid": "^1.4.7"
   },
   "devDependencies": {
