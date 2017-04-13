@@ -1,6 +1,6 @@
 {
   "name": "fucmen",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Fully Connected Mesh Network",
   "main": "dist/fucmen.js",
   "typings": "dist/src/fucmen.d.ts",
@@ -26,7 +26,8 @@
     "prebuild": "rimraf dist && rimraf docs",
     "build": "cross-env NODE_ENV=production webpack -p",
     "build:dev": "webpack",
-    "prepush": "npm run build"
+    "prepush": "npm run build",
+    "prepublish": "npm run build"
   },
   "bugs": {
     "url": "https://github.com/Loghorn/fucmen/issues"
