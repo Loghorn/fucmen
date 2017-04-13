@@ -1,26 +1,19 @@
-var Fucmen = require('..');
+var Fucmen = require('..').Fucmen;
 var util = require('util');
 var colors = require('colors');
 
-var fm = new Fucmen({ name: 'test2' }, { log: true });
+var fm = new Fucmen({ name: 'test2' }, { key: 'test' });
 
-fm.on('test_msg', function (data) {
-    console.log(data);
-});
+fm.on('error', console.error);
+fm.on('master', (node) => console.log(('NEW MASTER ' + node.id).white.inverse));
+
+fm.join('test_msg', console.log);
 
 fm.on('ready', function () {
     var i = 0;
     setInterval(function () {
         fm.publish('test_msg', ['this is a test', 'message', i++]);
     }, 1000);
-
-    setTimeout(function () {
-        fm.connectTo('23.97.248.193', 8000);
-    }, 5000)
-
-    setTimeout(function () {
-        fm.disconnectFrom('23.97.248.193', 8000);
-    }, 25000)
 
     setInterval(function () {
 //        console.log('connections:'.red.bold, util.inspect(fm.connections).red);
