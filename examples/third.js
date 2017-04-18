@@ -1,14 +1,14 @@
 const Fucmen = require('..').Fucmen;
 const crypto = require('crypto');
 
-const fm = new Fucmen({ name: 'test3' }, { port: 11111, key: 'dumb key', isMasterEligible: true });
+const fm = new Fucmen({ name: 'test3' }, { /*port: 11111,*/ key: 'test', isMasterEligible: true });
 
 fm.on('error', console.error);
 
-fm.join('msg', (from, data) => {
+fm.joinEx('msg', (from, data) => {
     const hash = crypto.createHash('sha256');
     hash.update(data);
-    fm.publish('ack', from, fm.id, hash.digest('hex'));
+    fm.sendTo(from, 'ack', hash.digest('hex'));
 });
 
 let sentTot = 0;
@@ -19,8 +19,8 @@ let waiter = null;
 
 const acks = new Map();
 
-fm.join('ack', (to, from, hash) => {
-    if (to === fm.id) {
+fm.onDirectMessageEx((from, msg, hash) => {
+    if (msg === 'ack') {
         if (acks.has(from)) {
             acks.set(from, hash);
             let wrong = 0;
@@ -45,7 +45,7 @@ function sendAndWait() {
 
     acks.clear();
     fm.connections.forEach((node) => acks.set(node.id, null));
-    fm.publish('msg', fm.id, message);
+    fm.publish('msg', message);
     let sent = acks.size;
 
     waiter = setTimeout(() => {

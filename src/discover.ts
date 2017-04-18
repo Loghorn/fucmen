@@ -5,7 +5,7 @@ import * as os from 'os'
 import * as uuid from 'node-uuid'
 import * as _ from 'lodash'
 
-const reservedEvents = ['promotion', 'demotion', 'added', 'removed', 'master', 'hello']
+const reservedEvents = ['promotion', 'demotion', 'added', 'removed', 'master', 'hello', 'direct']
 
 enum MulticommMode {
   Broadcast,
@@ -133,6 +133,7 @@ export class Discover extends EventEmitter {
 
     this.dyunicast = new DynamicUnicastNetwork(settings)
     this.dyunicast.on('error', (error: Error) => this.emit('error', error))
+    this.dyunicast.on('direct', (data: any[], obj: any, rinfo: dgram.RemoteInfo) => this.emit('direct', data, obj, rinfo))
 
     this.me.weight = options.weight || Discover.weight()
     this.me.isMasterEligible = options.isMasterEligible || false
@@ -306,7 +307,11 @@ export class Discover extends EventEmitter {
     const preferMulticast = groups[MulticommMode.Multicast] || []
     const preferUnicast = groups[MulticommMode.Unicast] || []
 
-    if (preferBroadcast.length >= preferMulticast.length) {
+    if (preferBroadcast.length === 0 && preferMulticast.length === 0) {
+      await Promise.all([
+        _.map(preferUnicast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, ...obj))
+      ])
+    } else if (preferBroadcast.length >= preferMulticast.length) {
       await Promise.all([
         this.broadcast.send(channel, ...obj),
         _.map(preferMulticast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, ...obj)),
@@ -318,6 +323,17 @@ export class Discover extends EventEmitter {
         _.map(preferBroadcast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, ...obj)),
         _.map(preferUnicast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, ...obj))
       ])
+    }
+
+    return true
+  }
+
+  async sendTo(id: string, ...obj: any[]) {
+    const dest = _.find([...this.nodes.values()], (node) => node.id === id)
+    if (!dest) {
+      return false
+    } else {
+      await this.dyunicast.sendTo(dest.address, dest.unicastPort, 'direct', ...obj)
     }
 
     return true

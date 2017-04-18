@@ -98,9 +98,10 @@ export abstract class Network extends EventEmitter {
       return Promise.resolve([])
     }
     const socket = this.socket
+    const destPort = port || this.port
     for (let contents of messages) {
       await new Promise<number>((resolve, reject) => {
-        socket.send(contents, 0, contents.length, port || this.port, destination, (err, bytes) => err ? reject(err) : resolve(bytes))
+        socket.send(contents, 0, contents.length, destPort, destination, (err, bytes) => err ? reject(err) : resolve(bytes))
       })
     }
   }

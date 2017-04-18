@@ -14,10 +14,10 @@ fm.on('ready', function () {
     var i = 0;
     setInterval(function () {
         fm.publish('test_msg', 'this is a test', 'message', i++);
-    }, 1000);
+    }, 10000);
 
     setInterval(function () {
         console.log('connections:'.red.underline, util.inspect(fm.connections).red);
-        console.log('nodes '.cyan.underline, util.inspect(fm.nodes).cyan);
+        console.log('all nodes '.cyan.underline, util.inspect(fm.nodes).cyan);
     }, 3000);
 });
