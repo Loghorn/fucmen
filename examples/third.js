@@ -1,21 +1,77 @@
-var Fucmen = require('..').Fucmen;
-var util = require('util');
-var colors = require('colors');
+const Fucmen = require('..').Fucmen;
+const crypto = require('crypto');
 
-var fm = new Fucmen({ name: 'test3' });
+const fm = new Fucmen({ name: 'test3' }, { port: 11111, key: 'dumb key', isMasterEligible: true });
 
 fm.on('error', console.error);
 
-fm.join('test_msg', console.log);
+fm.join('msg', (from, data) => {
+    const hash = crypto.createHash('sha256');
+    hash.update(data);
+    fm.publish('ack', from, fm.id, hash.digest('hex'));
+});
 
-fm.on('ready', function () {
-    var i = 0;
-    setInterval(function () {
-        fm.publish('test_msg', ['this is a test', 'message', i++]);
+let sentTot = 0;
+let failuresTot = 0;
+
+let msgHash = null;
+let waiter = null;
+
+const acks = new Map();
+
+fm.join('ack', (to, from, hash) => {
+    if (to === fm.id) {
+        if (acks.has(from)) {
+            acks.set(from, hash);
+            let wrong = 0;
+            acks.forEach((v) => wrong += v !== msgHash ? 1 : 0);
+            if (!wrong) {
+                clearTimeout(waiter);
+                const sent = acks.size;
+                sentTot += sent;
+                //console.log(`Sent: ${sent} failures: 0`);
+                sendAndWait();
+            }
+        }
+    }
+});
+
+function sendAndWait() {
+    const size = Math.floor(Math.random() * 60/*50000 + Math.random() * 100000*/) ? 3000 : 100000;
+    const message = crypto.randomBytes(size).toString('base64');
+    const hash = crypto.createHash('sha256');
+    hash.update(message);
+    msgHash = hash.digest('hex');
+
+    acks.clear();
+    fm.connections.forEach((node) => acks.set(node.id, null));
+    fm.publish('msg', fm.id, message);
+    let sent = acks.size;
+
+    waiter = setTimeout(() => {
+        let failures = 0;
+        acks.forEach((v) => {
+            if (v !== msgHash) {
+                ++failures;
+            }
+        });
+        sentTot += sent;
+        failuresTot += failures;
+        //console.log(`Sent: ${sent} failures: ${failures} size: ${size}`);
+        sendAndWait();
     }, 1000);
+}
 
+fm.on('ready', () => {
+    setTimeout(sendAndWait, 5000);
+
+    setInterval(() => {
+        console.log(`Total sent: ${sentTot} failures: ${failuresTot}   ${Math.round(failuresTot / sentTot * 1000)/10}%`);
+    }, 30000);
+/*
     setInterval(function () {
-//        console.log('connections:'.red.bold, util.inspect(fm.connections).red);
-        console.log('nodes '.cyan.bold, util.inspect(fm.nodes).cyan);
+        console.log('connections:', fm.connections);
+        console.log('nodes ', fm.nodes);
     }, 3000);
+*/
 });

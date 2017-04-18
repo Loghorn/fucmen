@@ -93,14 +93,16 @@ export abstract class Network extends EventEmitter {
 
   protected abstract bonded(): void
 
-  protected sendToDest(destination: string, messages: Buffer[]) {
+  protected async sendToDest(destination: string, messages: Buffer[], port?: number) {
     if (!this.socket) {
       return Promise.resolve([])
     }
     const socket = this.socket
-    return Promise.all(_.map(messages, (contents) => new Promise<number>((resolve, reject) => {
-      socket.send(contents, 0, contents.length, this.port, destination, (err, bytes) => err ? reject(err) : resolve(bytes))
-    })))
+    for (let contents of messages) {
+      await new Promise<number>((resolve, reject) => {
+        socket.send(contents, 0, contents.length, port || this.port, destination, (err, bytes) => err ? reject(err) : resolve(bytes))
+      })
+    }
   }
 
   protected async prepareMessage(event: string, ...data: any[]) {
@@ -162,6 +164,7 @@ export abstract class Network extends EventEmitter {
         } else {
           const idx = data.readUInt8(1)
           const msgId = uuid.unparse(data, 2)
+
           let buffers = this.msgBuffers.get(msgId)
           if (!buffers) {
             buffers = new Map<number, Buffer>()
@@ -219,9 +222,9 @@ export class BroadcastNetwork extends Network {
   }
 }
 
-export class UnicastNetwork extends Network {
+export class DynamicUnicastNetwork extends Network {
   private unicast: string[]
-  constructor(unicastAddresses: string | string[], options: NetworkOptions) {
+  constructor(options: NetworkOptions, unicastAddresses?: string | string[]) {
     super(options)
 
     if (typeof unicastAddresses === 'string') {
@@ -235,12 +238,6 @@ export class UnicastNetwork extends Network {
     }
   }
 
-  protected bonded() {
-    this.destinations = new Set(this.unicast)
-  }
-}
-
-export class DynamicUnicastNetwork extends Network {
   add(address: string) {
     this.destinations.add(address)
   }
@@ -249,15 +246,15 @@ export class DynamicUnicastNetwork extends Network {
     this.destinations.delete(address)
   }
 
-  async sendTo(destination: string, event: string, ...data: any[]) {
+  async sendTo(destination: string, port: number, event: string, ...data: any[]) {
     if (this.socket) {
       const contents = await this.prepareMessage(event, ...data)
-      await this.sendToDest(destination, contents)
+      await this.sendToDest(destination, contents, port)
     }
   }
 
   protected bonded() {
-    // do nothing
+    this.destinations = new Set(this.unicast)
   }
 }
 

@@ -1,6 +1,7 @@
-import { BroadcastNetwork, MulticastNetwork, UnicastNetwork, DynamicUnicastNetwork } from './network'
+import { BroadcastNetwork, MulticastNetwork, DynamicUnicastNetwork } from './network'
 import { EventEmitter } from 'events'
 import * as dgram from 'dgram'
+import * as os from 'os'
 import * as uuid from 'node-uuid'
 import * as _ from 'lodash'
 
@@ -8,12 +9,14 @@ const reservedEvents = ['promotion', 'demotion', 'added', 'removed', 'master', '
 
 enum MulticommMode {
   Broadcast,
-  Multicast
+  Multicast,
+  Unicast
 }
 
 export interface INode {
   id: string
   address: string
+  unicastPort: number
   hostName: string
   isMaster: boolean
   isMasterEligible: boolean
@@ -23,12 +26,20 @@ export interface INode {
 
 class Node implements INode {
   id: string
-  address: string
+  unicastPort: number
   hostName: string
   isMaster: boolean = false
   isMasterEligible: boolean
   weight: number = -Infinity
   advertisement: any = undefined
+
+  private _address: string
+  get address() {
+    return this._address
+  }
+  set address(address: string) {
+    this._address = isLocalIP(address) ? '127.0.0.1' : address
+  }
 
   private _lastSeenBroadcast: number = 0
   private _lastSeenMulticast: number = 0
@@ -41,8 +52,11 @@ class Node implements INode {
   set lastSeenMulticast(value: number) {
     this._lastSeenMulticast = value
   }
+
   preferredMode(timeout: number) {
-    if (+new Date() - this._lastSeenBroadcast <= timeout) {
+    if (this._address === '127.0.0.1') {
+      return MulticommMode.Unicast
+    } else if (+new Date() - this._lastSeenBroadcast <= timeout) {
       return MulticommMode.Broadcast
     } else {
       return MulticommMode.Multicast
@@ -54,6 +68,7 @@ class HelloData {
   isMaster: boolean = false
   isMasterEligible: boolean
   weight: number
+  unicastPort: number
   advertisement: any
 }
 
@@ -69,7 +84,7 @@ export class Discover extends EventEmitter {
   private checkId: NodeJS.Timer
   private helloId: NodeJS.Timer
   private nodes = new Map<string, Node>()
-  private channels= new Set<string>()
+  private channels = new Set<string>()
   private instanceUuid = uuid.v4()
   private broadcast: BroadcastNetwork
   private multicast: MulticastNetwork
@@ -94,10 +109,6 @@ export class Discover extends EventEmitter {
       throw new Error('masterTimeout must be greater than or equal to nodeTimeout.')
     }
 
-    this.me.weight = options.weight || Discover.weight()
-    this.me.isMasterEligible = options.isMasterEligible || false
-    this.me.advertisement = advertisement || options.advertisement
-
     const settings = {
       address: options.address || '0.0.0.0',
       port: options.port || 12345,
@@ -118,10 +129,15 @@ export class Discover extends EventEmitter {
     this.multicast.on('error', (error: Error) => this.emit('error', error))
     this.multicast.on('hello', (data: any[], obj: any, rinfo: dgram.RemoteInfo) => this.onHello(data[0], obj, rinfo, MulticommMode.Multicast))
 
-    ++settings.port
+    settings.port = options.unicastPort || (settings.port + Math.ceil(Math.random() * 100))
 
     this.dyunicast = new DynamicUnicastNetwork(settings)
     this.dyunicast.on('error', (error: Error) => this.emit('error', error))
+
+    this.me.weight = options.weight || Discover.weight()
+    this.me.isMasterEligible = options.isMasterEligible || false
+    this.me.unicastPort = settings.port
+    this.me.advertisement = advertisement || options.advertisement
   }
 
   private static weight() {
@@ -228,6 +244,10 @@ export class Discover extends EventEmitter {
     return this.me.isMaster
   }
 
+  get id() {
+    return this.instanceUuid
+  }
+
   async hello() {
     await this.broadcast.send('hello', this.me)
     await this.multicast.send('hello', this.me)
@@ -284,11 +304,20 @@ export class Discover extends EventEmitter {
     const groups = _.groupBy([...this.nodes.values()], (node) => node.preferredMode(this.nodeTimeout))
     const preferBroadcast = groups[MulticommMode.Broadcast] || []
     const preferMulticast = groups[MulticommMode.Multicast] || []
+    const preferUnicast = groups[MulticommMode.Unicast] || []
 
     if (preferBroadcast.length >= preferMulticast.length) {
-      await Promise.all([this.broadcast.send(channel, ...obj), _.map(preferMulticast, (node) => this.dyunicast.sendTo(node.address, channel, ...obj))])
+      await Promise.all([
+        this.broadcast.send(channel, ...obj),
+        _.map(preferMulticast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, ...obj)),
+        _.map(preferUnicast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, ...obj))
+      ])
     } else {
-      await Promise.all([this.multicast.send(channel, ...obj), _.map(preferBroadcast, (node) => this.dyunicast.sendTo(node.address, channel, ...obj))])
+      await Promise.all([
+        this.multicast.send(channel, ...obj),
+        _.map(preferBroadcast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, ...obj)),
+        _.map(preferUnicast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, ...obj))
+      ])
     }
 
     return true
@@ -319,6 +348,7 @@ export class Discover extends EventEmitter {
         break
     }
     node.address = rinfo.address
+    node.unicastPort = data.unicastPort || rinfo.port
     node.hostName = obj.hostName
 
     node.isMaster = data.isMaster
@@ -350,4 +380,8 @@ export class Discover extends EventEmitter {
       }
     }
   }
+}
+
+function isLocalIP(ip: string) {
+  return _.some(_.filter(_.flatten(_.values(os.networkInterfaces())), (iface) => iface.family === 'IPv4' && iface.internal === false), ({ address }) => address === ip)
 }
