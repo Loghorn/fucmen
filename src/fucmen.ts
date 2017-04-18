@@ -3,7 +3,7 @@ import 'babel-polyfill'
 import { EventEmitter } from 'events'
 import * as dgram from 'dgram'
 
-import { Discover, INode } from './discover'
+import { Discover, INode, DiscoverOptions } from './discover'
 
 export interface IFucmenNode {
   id: string
@@ -17,7 +17,7 @@ export class Fucmen extends EventEmitter {
 
   private discover: Discover
 
-  constructor(advertisement: any, discoveryOptions: any) {
+  constructor(advertisement: any, discoveryOptions: DiscoverOptions) {
     super()
 
     this.discover = new Discover(discoveryOptions, advertisement)
@@ -50,12 +50,14 @@ export class Fucmen extends EventEmitter {
     return this.discover.send(channel, ...data)
   }
 
-  join(channel: string, listener: (...data: any[]) => void) {
-    return this.discover.join(channel, (data, obj, rinfo) => listener(...data))
-  }
-
-  joinEx(channel: string, listener: (from: string, ...data: any[]) => void) {
-    return this.discover.join(channel, (data, obj, rinfo) => listener(obj.iid, ...data))
+  join(channel: string, listener: (...data: any[]) => void, withFrom?: false): boolean
+  join(channel: string, listener: (from: IFucmenNode | undefined, ...data: any[]) => void, withFrom: true): boolean
+  join(channel: string, listener: any, withFrom?: boolean) {
+    if (withFrom) {
+      return this.discover.join(channel, (data, obj, rinfo) => listener(this.getNodeFromId(obj.iid), ...data))
+    } else {
+      return this.discover.join(channel, (data, obj, rinfo) => listener(...data))
+    }
   }
 
   leave(channel: string) {
@@ -66,11 +68,17 @@ export class Fucmen extends EventEmitter {
     return this.discover.sendTo(id, ...data)
   }
 
-  onDirectMessage(listener: (...data: any[]) => void) {
-    this.discover.on('direct', (data: any[], obj: any, rinfo: dgram.RemoteInfo) => listener(...data))
+  onDirectMessage(listener: (...data: any[]) => void, withFrom?: false): void
+  onDirectMessage(listener: (from: IFucmenNode | undefined, ...data: any[]) => void, withFrom: true): void
+  onDirectMessage(listener: any, withFrom?: boolean) {
+    if (withFrom) {
+      this.discover.on('direct', (data: any[], obj: any, rinfo: dgram.RemoteInfo) => listener(this.getNodeFromId(obj.iid), ...data))
+    } else {
+      this.discover.on('direct', (data: any[], obj: any, rinfo: dgram.RemoteInfo) => listener(...data))
+    }
   }
 
-  onDirectMessageEx(listener: (from: string, ...data: any[]) => void) {
-    this.discover.on('direct', (data: any[], obj: any, rinfo: dgram.RemoteInfo) => listener(obj.iid, ...data))
+  private getNodeFromId(id: string) {
+    return this.connections.find((node) => node.id === id)
   }
 }

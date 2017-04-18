@@ -5,11 +5,11 @@ const fm = new Fucmen({ name: 'test3' }, { /*port: 11111,*/ key: 'test', isMaste
 
 fm.on('error', console.error);
 
-fm.joinEx('msg', (from, data) => {
+fm.join('msg', (from, data) => {
     const hash = crypto.createHash('sha256');
     hash.update(data);
-    fm.sendTo(from, 'ack', hash.digest('hex'));
-});
+    fm.sendTo(from.id, 'ack', hash.digest('hex'));
+}, true);
 
 let sentTot = 0;
 let failuresTot = 0;
@@ -19,10 +19,10 @@ let waiter = null;
 
 const acks = new Map();
 
-fm.onDirectMessageEx((from, msg, hash) => {
+fm.onDirectMessage((from, msg, hash) => {
     if (msg === 'ack') {
-        if (acks.has(from)) {
-            acks.set(from, hash);
+        if (acks.has(from.id)) {
+            acks.set(from.id, hash);
             let wrong = 0;
             acks.forEach((v) => wrong += v !== msgHash ? 1 : 0);
             if (!wrong) {
@@ -34,7 +34,7 @@ fm.onDirectMessageEx((from, msg, hash) => {
             }
         }
     }
-});
+}, true);
 
 function sendAndWait() {
     const size = Math.floor(Math.random() * 60/*50000 + Math.random() * 100000*/) ? 3000 : 100000;

@@ -7,10 +7,10 @@ var fm = new Fucmen({ name: 'test2' }, { key: 'test' });
 fm.on('error', console.error);
 fm.on('master', (node) => console.log(('NEW MASTER ' + node.id).white.inverse));
 
-fm.joinEx('test_msg', (from, data) => {
-    console.log(from.blue, util.inspect(data, { colors: true }));
-    fm.sendTo(from, 'A direct message', data[2]);
-});
+fm.join('test_msg', (from, data) => {
+    console.log(from.id.cyan, util.inspect(data, { colors: true }));
+    fm.sendTo(from.id, 'A direct message', data[2]);
+}, true);
 
 fm.on('ready', function () {
     var i = 0;
@@ -23,4 +23,4 @@ fm.on('ready', function () {
     }, 5000);
 });
 
-fm.onDirectMessageEx(console.log);
+fm.onDirectMessage(console.log);

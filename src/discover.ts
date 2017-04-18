@@ -72,6 +72,26 @@ class HelloData {
   advertisement: any
 }
 
+export class DiscoverOptions {
+  helloInterval?: number
+  checkInterval?: number
+  nodeTimeout?: number
+  masterTimeout?: number
+  mastersRequired?: number
+  address?: string
+  port?: number
+  key?: string
+  reuseAddr?: boolean
+  ignoreProcess?: boolean
+  dictionary?: string[]
+  broadcast?: string
+  multicast?: string
+  multicastTTL?: number
+  unicastPort?: number
+  weight?: number
+  isMasterEligible?: boolean
+}
+
 export class Discover extends EventEmitter {
   private helloInterval = 1000
   private checkInterval = 2000
@@ -90,10 +110,8 @@ export class Discover extends EventEmitter {
   private multicast: MulticastNetwork
   private dyunicast: DynamicUnicastNetwork
 
-  constructor(options: any, advertisement?: any) {
+  constructor(options: DiscoverOptions, advertisement?: any) {
     super()
-
-    options = options || {}
 
     this.helloInterval = options.helloInterval || 1000
     this.checkInterval = options.checkInterval || 2000
@@ -138,7 +156,7 @@ export class Discover extends EventEmitter {
     this.me.weight = options.weight || Discover.weight()
     this.me.isMasterEligible = options.isMasterEligible || false
     this.me.unicastPort = settings.port
-    this.me.advertisement = advertisement || options.advertisement
+    this.me.advertisement = advertisement
   }
 
   private static weight() {
