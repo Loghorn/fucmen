@@ -2,14 +2,17 @@ var Fucmen = require('..').Fucmen;
 var util = require('util');
 var colors = require('colors');
 
-var fm = new Fucmen({ name: 'test2' }, { key: 'test' });
+var fm = new Fucmen({ name: 'test2' }, { port: 11111, key: 'test' });
 
 fm.on('error', console.error);
 fm.on('master', (node) => console.log(('NEW MASTER ' + node.id).white.inverse));
 
 fm.join('test_msg', (from, data) => {
     console.log(from.id.cyan, util.inspect(data, { colors: true }));
-    fm.sendTo(from.id, 'A direct message', data[2]);
+    fm.sendTo(from.id, true,
+        'A quite long direct message not fitting in a single packet',
+        new Buffer(2048),
+        data[2]);
 }, true);
 
 fm.on('ready', function () {

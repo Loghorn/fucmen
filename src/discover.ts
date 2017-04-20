@@ -327,31 +327,31 @@ export class Discover extends EventEmitter {
 
     if (preferBroadcast.length === 0 && preferMulticast.length === 0) {
       await Promise.all([
-        _.map(preferUnicast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, ...obj))
+        _.map(preferUnicast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, false, ...obj))
       ])
     } else if (preferBroadcast.length >= preferMulticast.length) {
       await Promise.all([
         this.broadcast.send(channel, ...obj),
-        _.map(preferMulticast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, ...obj)),
-        _.map(preferUnicast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, ...obj))
+        _.map(preferMulticast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, false, ...obj)),
+        _.map(preferUnicast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, false, ...obj))
       ])
     } else {
       await Promise.all([
         this.multicast.send(channel, ...obj),
-        _.map(preferBroadcast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, ...obj)),
-        _.map(preferUnicast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, ...obj))
+        _.map(preferBroadcast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, false, ...obj)),
+        _.map(preferUnicast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, false, ...obj))
       ])
     }
 
     return true
   }
 
-  async sendTo(id: string, ...obj: any[]) {
+  async sendTo(id: string, reliable: boolean, ...obj: any[]) {
     const dest = _.find([...this.nodes.values()], (node) => node.id === id)
     if (!dest) {
       return false
     } else {
-      await this.dyunicast.sendTo(dest.address, dest.unicastPort, 'direct', ...obj)
+      await this.dyunicast.sendTo(dest.address, dest.unicastPort, 'direct', reliable, ...obj)
     }
 
     return true

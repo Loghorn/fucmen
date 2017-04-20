@@ -64,8 +64,8 @@ export class Fucmen extends EventEmitter {
     return this.discover.leave(channel)
   }
 
-  sendTo(id: string, ...data: any[]) {
-    return this.discover.sendTo(id, ...data)
+  sendTo(id: string, reliable: boolean, ...data: any[]) {
+    return this.discover.sendTo(id, reliable, ...data)
   }
 
   onDirectMessage(listener: (...data: any[]) => void, withFrom?: false): void
