@@ -184,7 +184,7 @@ export abstract class Network extends EventEmitter {
           }
         } else {
           const idx = data.readUInt8(1)
-          const requireAck = data.readUInt8(2) ? true: false
+          const requireAck = data.readUInt8(2) ? true : false
           const msgId = uuid.unparse(data, 3)
 
           let buffer = this.msgBuffers.get(msgId)
