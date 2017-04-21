@@ -1,9 +1,9 @@
 {
   "name": "fucmen",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "description": "Fully Connected Mesh Network",
   "main": "dist/fucmen.js",
-  "typings": "dist/src/fucmen.d.ts",
+  "types": "dist/types/fucmen.d.ts",
   "files": [
     "dist"
   ],
@@ -33,7 +33,9 @@
     "url": "https://github.com/Loghorn/fucmen/issues"
   },
   "homepage": "https://github.com/Loghorn/fucmen#readme",
-  "dependencies": {},
+  "dependencies": {
+    "@types/node": "^4.2.0"
+  },
   "devDependencies": {
     "@types/colors": "*",
     "@types/lodash": "*",
