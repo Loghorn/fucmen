@@ -13,7 +13,7 @@ export interface IFucmenNode {
 }
 
 export class Fucmen extends EventEmitter {
-  private allNodes: IFucmenNode[] = []
+  private allNodes = new Map<string, IFucmenNode>()
 
   private discover: Discover
 
@@ -22,7 +22,7 @@ export class Fucmen extends EventEmitter {
 
     this.discover = new Discover(discoveryOptions, advertisement)
 
-    this.discover.on('added', (node: INode) => this.allNodes.push({ id: node.id, host: node.address + ':' + node.unicastPort, master: node.isMaster, adv: node.advertisement }))
+    this.discover.on('added', (node: INode) => this.allNodes.set(node.id, { id: node.id, host: node.address + ':' + node.unicastPort, master: node.isMaster, adv: node.advertisement }))
     this.discover.on('promotion', () => this.emit('promoted'))
     this.discover.on('demotion', () => this.emit('demoted'))
     this.discover.on('master', (node: INode) => this.emit('master', { id: node.id, host: node.address + ':' + node.unicastPort, master: true, adv: node.advertisement }))
@@ -36,8 +36,14 @@ export class Fucmen extends EventEmitter {
     return this.discover.id
   }
 
+  get isMaster() {
+    return this.discover.isMaster
+  }
+
   get nodes() {
-    return this.allNodes
+    const nodes: IFucmenNode[] = []
+    this.allNodes.forEach((node) => nodes.push(node))
+    return nodes
   }
 
   get connections() {
