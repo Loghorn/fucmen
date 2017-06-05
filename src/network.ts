@@ -10,7 +10,6 @@ declare module 'dgram' {
   export function createSocket(options: { type: string, reuseAddr?: boolean }, callback?: (msg: Buffer, rinfo: RemoteInfo) => void): Socket
 }
 
-const processUuid = uuid.v4()
 const hostName = os.hostname()
 
 export type NetworkOptions = {
@@ -19,7 +18,6 @@ export type NetworkOptions = {
   port: number
   key: string | null
   reuseAddr: boolean
-  ignoreProcess: boolean
   dictionary?: string[]
 }
 
@@ -30,7 +28,6 @@ export abstract class Network extends EventEmitter {
   private port: number
   private key: string | null
   private reuseAddr: boolean
-  private ignoreProcess: boolean
   private instanceUuid: string
   private dictionary: any[]
 
@@ -41,9 +38,8 @@ export abstract class Network extends EventEmitter {
     this.port = options.port
     this.key = options.key
     this.reuseAddr = options.reuseAddr
-    this.ignoreProcess = options.ignoreProcess
     this.instanceUuid = options.instanceUuid
-    this.dictionary = _.uniq((options.dictionary || []).concat(['event', 'pid', 'iid', 'hostName', 'data']))
+    this.dictionary = _.uniq((options.dictionary || []).concat(['event', 'iid', 'hostName', 'data']))
   }
 
   start() {
@@ -54,8 +50,6 @@ export abstract class Network extends EventEmitter {
           if (!obj) {
             return false
           } else if (obj.iid === this.instanceUuid) {
-            return false
-          } else if (obj.pid === processUuid && this.ignoreProcess) {
             return false
           } else if (obj.event && obj.data) {
             this.emit(obj.event, obj.data, obj, rinfo)
@@ -112,7 +106,6 @@ export abstract class Network extends EventEmitter {
   protected async prepareMessage(event: string, requireAck: false | ((buffers: Buffer[]) => void), ...data: any[]): Promise<[Buffer[], null | Promise<void>]> {
     const obj = {
       event: event,
-      pid: uuid.parse(processUuid),
       iid: uuid.parse(this.instanceUuid),
       hostName: hostName,
       data: data
@@ -162,7 +155,6 @@ export abstract class Network extends EventEmitter {
       try {
         const tmp = Pack.decode(this.key ? decrypt(buf, this.key) : buf, this.dictionary)
         tmp.iid = uuid.unparse(tmp.iid)
-        tmp.pid = uuid.unparse(tmp.pid)
         return tmp
       } catch (e) {
         return undefined

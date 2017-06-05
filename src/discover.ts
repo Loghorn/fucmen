@@ -82,7 +82,6 @@ export class DiscoverOptions {
   port?: number
   key?: string
   reuseAddr?: boolean
-  ignoreProcess?: boolean
   dictionary?: string[]
   broadcast?: string
   multicast?: string
@@ -132,7 +131,6 @@ export class Discover extends EventEmitter {
       port: options.port || 12345,
       key: options.key || null,
       reuseAddr: (options.reuseAddr === false) ? false : true,
-      ignoreProcess: (options.ignoreProcess === false) ? false : true,
       instanceUuid: this.instanceUuid,
       dictionary: (options.dictionary || []).concat(['isMaster', 'isMasterEligible', 'weight', 'address', 'advertisement']).concat(reservedEvents)
     }

@@ -1,6 +1,6 @@
 {
   "name": "fucmen",
-  "version": "2.1.3",
+  "version": "2.2.0",
   "description": "Fully Connected Mesh Network",
   "main": "dist/fucmen.js",
   "types": "dist/types/fucmen.d.ts",
