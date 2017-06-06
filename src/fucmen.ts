@@ -52,6 +52,14 @@ export class Fucmen extends EventEmitter {
     return nodes
   }
 
+  promote() {
+    return this.discover.promote()
+  }
+
+  demote(permanent: boolean) {
+    return this.discover.demote(permanent)
+  }
+
   publish(channel: string, ...data: any[]) {
     return this.discover.send(channel, ...data)
   }
