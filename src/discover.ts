@@ -196,29 +196,30 @@ export class Discover extends EventEmitter {
       this.checkId = setInterval(() => {
         let mastersFound = 0
         let higherWeightFound = false
+        let higherMasterWeight = -Infinity
 
         this.nodes.forEach((node, key) => {
-          let removed = false
-
           if (+new Date() - node.lastSeen > this.nodeTimeout) {
             if (node.isMaster && (+new Date() - node.lastSeen) < this.masterTimeout) {
               mastersFound++
             }
 
             this.nodes.delete(key)
-            removed = true
             this.emit('removed', node)
           } else if (node.isMaster) {
             mastersFound++
-          }
-
-          if (node.weight > this.me.weight && node.isMasterEligible && !node.isMaster && !removed) {
+            higherMasterWeight = Math.max(higherMasterWeight, node.weight)
+          } else if (node.isMasterEligible && node.weight > this.me.weight) {
             higherWeightFound = true
           }
         })
 
-        if (!this.me.isMaster && mastersFound < this.mastersRequired && this.me.isMasterEligible && !higherWeightFound) {
-          this.promote()
+        if (this.me.isMasterEligible && !this.me.isMaster) {
+          if (mastersFound < this.mastersRequired && !higherWeightFound) {
+            this.promote()
+          } else if (higherMasterWeight < 0 && this.me.weight > 0) {
+            this.promote()
+          }
         }
       }, this.checkInterval)
 
