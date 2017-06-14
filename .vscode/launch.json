@@ -9,6 +9,7 @@
 			"env": {
 				"NODE_ENV": "development"
 			},
+			"console": "integratedTerminal",
 			"smartStep": false
 		},
 		{

@@ -44,7 +44,7 @@ class Node implements INode {
   private _lastSeenBroadcast: number = 0
   private _lastSeenMulticast: number = 0
   get lastSeen() {
-    return _.max([this._lastSeenBroadcast, this._lastSeenMulticast])
+    return _.max([this._lastSeenBroadcast, this._lastSeenMulticast]) as number
   }
   set lastSeenBroadcast(value: number) {
     this._lastSeenBroadcast = value
@@ -152,7 +152,7 @@ export class Discover extends EventEmitter {
     this.dyunicast.on('direct', (data: any[], obj: any, rinfo: dgram.RemoteInfo) => this.emit('direct', data, obj, rinfo))
 
     this.me.weight = options.weight || Discover.weight()
-    this.me.isMasterEligible = options.isMasterEligible || false
+    this.me.isMaster = this.me.isMasterEligible = options.isMasterEligible || false
     this.me.unicastPort = settings.port
     this.me.advertisement = advertisement
   }
@@ -196,10 +196,12 @@ export class Discover extends EventEmitter {
       this.checkId = setInterval(() => {
         let mastersFound = 0
         let higherWeightFound = false
+        let higherWeightMastersFound = 0
 
         this.nodes.forEach((node, key) => {
-          if (+new Date() - node.lastSeen > this.nodeTimeout) {
-            if (node.isMaster && (+new Date() - node.lastSeen) < this.masterTimeout) {
+          const timeout = +new Date() - node.lastSeen
+          if (timeout > this.nodeTimeout) {
+            if (node.isMaster && timeout < this.masterTimeout) {
               mastersFound++
             }
 
@@ -207,6 +209,9 @@ export class Discover extends EventEmitter {
             this.emit('removed', node)
           } else if (node.isMaster) {
             mastersFound++
+            if (node.weight >= this.me.weight) {
+              higherWeightMastersFound++
+            }
           } else if (node.isMasterEligible && node.weight > this.me.weight) {
             higherWeightFound = true
           }
@@ -215,6 +220,10 @@ export class Discover extends EventEmitter {
         if (this.me.isMasterEligible && !this.me.isMaster) {
           if (mastersFound < this.mastersRequired && !higherWeightFound) {
             this.promote()
+          }
+        } else if (this.me.isMaster) {
+          if (mastersFound >= this.mastersRequired && higherWeightMastersFound) {
+            this.demote(false)
           }
         }
       }, this.checkInterval)
@@ -401,7 +410,7 @@ export class Discover extends EventEmitter {
           }
         })
 
-        if (this.me.isMaster && masterCount > this.mastersRequired) {
+        if (this.me.isMaster && masterCount > this.mastersRequired && node.weight > this.me.weight) {
           this.demote(false)
         }
 
