@@ -52,6 +52,10 @@ export class Fucmen extends EventEmitter {
     return nodes
   }
 
+  setMasterEligible() {
+    return this.discover.setMasterEligible()
+  }
+
   promote() {
     return this.discover.promote()
   }
