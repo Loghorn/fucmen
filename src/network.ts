@@ -81,7 +81,7 @@ export abstract class Network extends EventEmitter {
   async send(event: string, ...data: any[]) {
     if (this.socket) {
       const [contents] = await this.prepareMessage(event, false, ...data)
-      await Promise.all(_.map([...this.destinations.values()], (destination) => this.sendToDest(destination, contents)))
+      await Promise.all([...this.destinations.values()].map((destination) => this.sendToDest(destination, contents)))
     }
   }
 
@@ -112,7 +112,7 @@ export abstract class Network extends EventEmitter {
     }
     const msg = await this.encode(obj)
     if (msg.length > 1008 || requireAck) {
-      const chunks = _.map(_.chunk(msg, 990), c => new Buffer(c))
+      const chunks = _.chunk(msg, 990).map(c => new Buffer(c))
       const num = chunks.length
       if (num > 254) {
         throw new Error('Message ' + event + ' too long')
@@ -120,10 +120,8 @@ export abstract class Network extends EventEmitter {
       const msgId = uuid.v4({}, new Buffer(19), 3)
       msgId.writeUInt8(num, 0)
       msgId.writeUInt8(requireAck ? 1 : 0, 2)
-      const msgs = _.map(chunks, c => Buffer.concat([msgId, c], 19 + c.length))
-      _.forEach(msgs, (m, idx) => {
-        m.writeUInt8(idx, 1)
-      })
+      const msgs = chunks.map(c => Buffer.concat([msgId, c], 19 + c.length))
+      msgs.forEach((m, idx) => m.writeUInt8(idx, 1))
       if (requireAck) {
         const ackBuffers = new AckBuffers(msgs, requireAck)
         this.msgWaitingAckBuffers.set(uuid.unparse(msgId, 3), ackBuffers)
@@ -185,8 +183,8 @@ export abstract class Network extends EventEmitter {
           }
           buffer.buffers.set(idx, data.slice(19))
           if (this.msgBuffers.size > 10) {
-            const oldBuffers = _.filter([...this.msgBuffers.entries()], (e) => e[1].isOld)
-            _.forEach(oldBuffers, (e) => {
+            const oldBuffers = [...this.msgBuffers.entries()].filter((e) => e[1].isOld)
+            oldBuffers.forEach((e) => {
               // console.log('Removing buffer => ' + e[1].buffers.size + '/' + e[1].numBuffers)
               this.msgBuffers.delete(e[0])
             })
@@ -211,7 +209,7 @@ export abstract class Network extends EventEmitter {
           if (buffer.buffers.size === numPackets) {
             this.msgBuffers.delete(msgId)
 
-            const fullMsg = Buffer.concat(_.map(_.sortBy([...buffer.buffers.entries()], (e) => e[0]), (e) => e[1]))
+            const fullMsg = Buffer.concat(_.sortBy([...buffer.buffers.entries()], (e) => e[0]).map((e) => e[1]))
             resolve(decodeBuffer(fullMsg))
           }
 
@@ -232,7 +230,7 @@ class AckBuffers {
   private timer: NodeJS.Timer
   private retries = 0
   constructor(buffers: Buffer[], cbk: (buffers: Buffer[]) => void) {
-    _.forEach(buffers, (buf, idx) => this.buffers.set(idx, buf))
+    buffers.forEach((buf, idx) => this.buffers.set(idx, buf))
     this.promise = new Promise<void>((resolve, reject) => {
       this.resolve = resolve
       this.reject = reject
@@ -242,7 +240,7 @@ class AckBuffers {
   }
 
   processAckPacket(data: Buffer, offset: number) {
-    _.forEach([...this.buffers.keys()], (k) => {
+    [...this.buffers.keys()].forEach((k) => {
       const ackVal = data.readUInt8(offset + k / 8)
       if (ackVal & (1 << (k % 8))) {
         this.buffers.delete(k)

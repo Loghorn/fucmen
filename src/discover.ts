@@ -44,7 +44,7 @@ class Node implements INode {
   private _lastSeenBroadcast: number = 0
   private _lastSeenMulticast: number = 0
   get lastSeen() {
-    return _.max([this._lastSeenBroadcast, this._lastSeenMulticast]) as number
+    return Math.max(this._lastSeenBroadcast, this._lastSeenMulticast)
   }
   set lastSeenBroadcast(value: number) {
     this._lastSeenBroadcast = value
@@ -287,7 +287,7 @@ export class Discover extends EventEmitter {
   }
 
   join(channel: string, fn?: (data: any[], obj: any, rinfo: dgram.RemoteInfo) => void) {
-    if (_.includes(reservedEvents, channel)) {
+    if (reservedEvents.includes(channel)) {
       return false
     }
 
@@ -325,7 +325,7 @@ export class Discover extends EventEmitter {
   }
 
   async send(channel: string, ...obj: any[]) {
-    if (_.includes(reservedEvents, channel)) {
+    if (reservedEvents.includes(channel)) {
       return false
     }
 
@@ -336,19 +336,19 @@ export class Discover extends EventEmitter {
 
     if (preferBroadcast.length === 0 && preferMulticast.length === 0) {
       await Promise.all([
-        _.map(preferUnicast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, false, ...obj))
+        preferUnicast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, false, ...obj))
       ])
     } else if (preferBroadcast.length >= preferMulticast.length) {
       await Promise.all([
         this.broadcast.send(channel, ...obj),
-        _.map(preferMulticast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, false, ...obj)),
-        _.map(preferUnicast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, false, ...obj))
+        preferMulticast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, false, ...obj)),
+        preferUnicast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, false, ...obj))
       ])
     } else {
       await Promise.all([
         this.multicast.send(channel, ...obj),
-        _.map(preferBroadcast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, false, ...obj)),
-        _.map(preferUnicast, (node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, false, ...obj))
+        preferBroadcast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, false, ...obj)),
+        preferUnicast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, false, ...obj))
       ])
     }
 
@@ -356,7 +356,7 @@ export class Discover extends EventEmitter {
   }
 
   async sendTo(id: string, reliable: boolean, ...obj: any[]) {
-    const dest = _.find([...this.nodes.values()], (node) => node.id === id)
+    const dest = [...this.nodes.values()].find((node) => node.id === id)
     if (!dest) {
       return false
     } else {
@@ -426,5 +426,5 @@ export class Discover extends EventEmitter {
 }
 
 function isLocalIP(ip: string) {
-  return _.some(_.filter(_.flatten(_.values(os.networkInterfaces())), (iface) => iface.family === 'IPv4' && iface.internal === false), ({ address }) => address === ip)
+  return _.flatten(_.values(os.networkInterfaces())).filter((iface) => iface.family === 'IPv4' && iface.internal === false).some(({ address }) => address === ip)
 }

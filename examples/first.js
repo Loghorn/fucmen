@@ -34,7 +34,8 @@ function createFM(weight) {
 var weights = [-1, 2, 3, -4, 3];
 
 Promise.all(weights.map((weight) => createFM(weight)))
-    .then(([fm, ...other]) => {
+    .then((fms) => {
+        const fm = fms[0];
         setInterval(function() {
             console.log('connections:'.red.underline, util.inspect(fm.connections, false, 2, true));
         }, 3000);
