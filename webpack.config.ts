@@ -3,6 +3,7 @@ const { camelCase } = require('lodash')
 const webpack = require('webpack')
 const { TsConfigPathsPlugin, CheckerPlugin } = require('awesome-typescript-loader')
 const TypedocWebpackPlugin = require('typedoc-webpack-plugin')
+const UglifyEsPlugin = require('uglify-es-webpack-plugin')
 
 const libraryName = require('./package.json').name
 
@@ -20,6 +21,11 @@ plugins.push(new TypedocWebpackPlugin(
   },
   'src'
 ))
+
+if (process.env.NODE_ENV === 'production') {
+  plugins.push(new UglifyEsPlugin())
+}
+
 const entry = join(__dirname, `src/${libraryName}.ts`)
 
 export default {

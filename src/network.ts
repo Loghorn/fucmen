@@ -112,12 +112,12 @@ export abstract class Network extends EventEmitter {
     }
     const msg = await this.encode(obj)
     if (msg.length > 1008 || requireAck) {
-      const chunks = _.chunk(msg, 990).map(c => new Buffer(c))
+      const chunks = _.chunk(msg, 990).map(c => Buffer.from(c))
       const num = chunks.length
       if (num > 254) {
         throw new Error('Message ' + event + ' too long')
       }
-      const msgId = uuid.v4({}, new Buffer(19), 3)
+      const msgId = uuid.v4({}, Buffer.allocUnsafe(19), 3)
       msgId.writeUInt8(num, 0)
       msgId.writeUInt8(requireAck ? 1 : 0, 2)
       const msgs = chunks.map(c => Buffer.concat([msgId, c], 19 + c.length))
@@ -130,7 +130,7 @@ export abstract class Network extends EventEmitter {
         return [msgs, null]
       }
     } else {
-      return [[Buffer.concat([new Buffer([0]), msg], msg.length + 1)], null]
+      return [[Buffer.concat([Buffer.from([0]), msg], msg.length + 1)], null]
     }
   }
 
@@ -192,7 +192,7 @@ export abstract class Network extends EventEmitter {
           this.msgBuffers.set(msgId, buffer)
 
           if (requireAck && this.socket) {
-            const ackBuf = new Buffer(1 + 16 + 256 / 8)
+            const ackBuf = Buffer.allocUnsafe(1 + 16 + 256 / 8)
             ackBuf.writeUInt8(255, 0)
             uuid.parse(msgId, ackBuf, 1)
             ackBuf.fill(0, 17)
