@@ -82,8 +82,8 @@ export class Fucmen extends EventEmitter {
     return this.discover.leave(channel)
   }
 
-  sendTo(id: string, reliable: boolean, ...data: any[]) {
-    return this.discover.sendTo(id, reliable, ...data)
+  sendTo(id: string, reliableMaxRetries: boolean | number, ...data: any[]) {
+    return this.discover.sendTo(id, reliableMaxRetries === true ? 3 : (reliableMaxRetries || 0), ...data)
   }
 
   onDirectMessage(listener: (...data: any[]) => void, withFrom?: false): void

@@ -336,31 +336,31 @@ export class Discover extends EventEmitter {
 
     if (preferBroadcast.length === 0 && preferMulticast.length === 0) {
       await Promise.all([
-        preferUnicast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, false, ...obj))
+        preferUnicast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, 0, ...obj))
       ])
     } else if (preferBroadcast.length >= preferMulticast.length) {
       await Promise.all([
         this.broadcast.send(channel, ...obj),
-        preferMulticast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, false, ...obj)),
-        preferUnicast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, false, ...obj))
+        preferMulticast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, 0, ...obj)),
+        preferUnicast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, 0, ...obj))
       ])
     } else {
       await Promise.all([
         this.multicast.send(channel, ...obj),
-        preferBroadcast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, false, ...obj)),
-        preferUnicast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, false, ...obj))
+        preferBroadcast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, 0, ...obj)),
+        preferUnicast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, 0, ...obj))
       ])
     }
 
     return true
   }
 
-  async sendTo(id: string, reliable: boolean, ...obj: any[]) {
+  async sendTo(id: string, maxRetries: number, ...obj: any[]) {
     const dest = [...this.nodes.values()].find((node) => node.id === id)
     if (!dest) {
       return false
     } else {
-      await this.dyunicast.sendTo(dest.address, dest.unicastPort, 'direct', reliable, ...obj)
+      await this.dyunicast.sendTo(dest.address, dest.unicastPort, 'direct', maxRetries, ...obj)
     }
 
     return true

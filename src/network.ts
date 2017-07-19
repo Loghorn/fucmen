@@ -80,7 +80,7 @@ export abstract class Network extends EventEmitter {
 
   async send(event: string, ...data: any[]) {
     if (this.socket) {
-      const [contents] = await this.prepareMessage(event, false, ...data)
+      const [contents] = await this.prepareMessage(event, 0, false, ...data)
       await Promise.all([...this.destinations.values()].map((destination) => this.sendToDest(destination, contents)))
     }
   }
@@ -103,7 +103,7 @@ export abstract class Network extends EventEmitter {
   // tslint:disable-next-line:member-ordering
   private msgWaitingAckBuffers = new Map<string, AckBuffers>()
 
-  protected async prepareMessage(event: string, requireAck: false | ((buffers: Buffer[]) => void), ...data: any[]): Promise<[Buffer[], null | Promise<void>]> {
+  protected async prepareMessage(event: string, maxRetries: number, requireAck: false | ((buffers: Buffer[]) => void), ...data: any[]): Promise<[Buffer[], null | Promise<void>]> {
     const obj = {
       event: event,
       iid: uuid.parse(this.instanceUuid),
@@ -123,7 +123,7 @@ export abstract class Network extends EventEmitter {
       const msgs = chunks.map(c => Buffer.concat([msgId, c], 19 + c.length))
       msgs.forEach((m, idx) => m.writeUInt8(idx, 1))
       if (requireAck) {
-        const ackBuffers = new AckBuffers(msgs, requireAck)
+        const ackBuffers = new AckBuffers(msgs, requireAck, maxRetries)
         this.msgWaitingAckBuffers.set(uuid.unparse(msgId, 3), ackBuffers)
         return [msgs, ackBuffers.promise]
       } else {
@@ -229,7 +229,9 @@ class AckBuffers {
   private reject: (reason?: any) => void
   private timer: NodeJS.Timer
   private retries = 0
-  constructor(buffers: Buffer[], cbk: (buffers: Buffer[]) => void) {
+  private readonly maxRetries: number
+  constructor(buffers: Buffer[], cbk: (buffers: Buffer[]) => void, maxRetries: number) {
+    this.maxRetries = maxRetries
     buffers.forEach((buf, idx) => this.buffers.set(idx, buf))
     this.promise = new Promise<void>((resolve, reject) => {
       this.resolve = resolve
@@ -256,7 +258,7 @@ class AckBuffers {
 
   private startTimer(cbk: (buffers: Buffer[]) => void) {
     this.timer = setTimeout(() => {
-      if (++this.retries === 3) {
+      if (++this.retries >= this.maxRetries) {
         this.reject(new Error('Too many retries'))
       } else {
         cbk([...this.buffers.values()])
@@ -343,9 +345,9 @@ export class DynamicUnicastNetwork extends Network {
     this.destinations.delete(address)
   }
 
-  async sendTo(destination: string, port: number, event: string, reliable: boolean, ...data: any[]) {
+  async sendTo(destination: string, port: number, event: string, maxRetries: number, ...data: any[]) {
     if (this.socket) {
-      const [contents, completed] = await this.prepareMessage(event, reliable ? async (buffers) => {
+      const [contents, completed] = await this.prepareMessage(event, maxRetries, maxRetries ? async (buffers) => {
         await this.sendToDest(destination, buffers, port)
       } : false, ...data)
       await this.sendToDest(destination, contents, port)
