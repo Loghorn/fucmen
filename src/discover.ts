@@ -277,9 +277,22 @@ export class Discover extends EventEmitter {
   }
 
   async hello() {
-    await this.broadcast.send('hello', this.me)
-    await this.multicast.send('hello', this.me)
-    this.emit('helloEmitted')
+    let sent = false
+    try {
+      await this.broadcast.send('hello', this.me)
+      sent = true
+    } catch (e) {
+      //
+    }
+    try {
+      await this.multicast.send('hello', this.me)
+      sent = true
+    } catch (e) {
+      //
+    }
+    if (sent) {
+      this.emit('helloEmitted')
+    }
   }
 
   eachNode(fn: (node: INode) => void) {
