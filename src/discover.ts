@@ -31,6 +31,7 @@ class Node implements INode {
   isMaster: boolean = false
   isMasterEligible: boolean
   weight: number = -Infinity
+  prefMode: MulticommMode | null = null
   advertisement: any = undefined
 
   private _address: string
@@ -56,6 +57,8 @@ class Node implements INode {
   preferredMode(timeout: number) {
     if (this._address === '127.0.0.1') {
       return MulticommMode.Unicast
+    } else if (this.prefMode !== null) {
+      return this.prefMode
     } else if (+new Date() - this._lastSeenBroadcast <= timeout) {
       return MulticommMode.Broadcast
     } else {
@@ -68,6 +71,7 @@ class HelloData {
   isMaster: boolean = false
   isMasterEligible: boolean
   weight: number
+  prefMode: MulticommMode
   unicastPort: number
   advertisement: any
 }
@@ -94,6 +98,7 @@ export class DiscoverOptions {
 export class Discover extends EventEmitter {
   private helloInterval = 1000
   private checkInterval = 2000
+  private resetInterval = 60000
   private nodeTimeout = 2000
   private masterTimeout = 2000
   private mastersRequired = 1
@@ -102,11 +107,14 @@ export class Discover extends EventEmitter {
   private running = false
   private checkId: NodeJS.Timer
   private helloId: NodeJS.Timer
+  private resetId: NodeJS.Timer
   private nodes = new Map<string, Node>()
   private channels = new Set<string>()
   private instanceUuid = uuid.v4()
   private broadcast: BroadcastNetwork
+  private broadcastHelloCounter: number = 0
   private multicast: MulticastNetwork
+  private multicastHelloCounter: number = 0
   private dyunicast: DynamicUnicastNetwork
 
   constructor(options: DiscoverOptions, advertisement?: any) {
@@ -132,7 +140,7 @@ export class Discover extends EventEmitter {
       key: options.key || null,
       reuseAddr: (options.reuseAddr === false) ? false : true,
       instanceUuid: this.instanceUuid,
-      dictionary: (options.dictionary || []).concat(['isMaster', 'isMasterEligible', 'weight', 'address', 'advertisement']).concat(reservedEvents)
+      dictionary: (options.dictionary || []).concat(['isMaster', 'isMasterEligible', 'weight', 'prefMode', 'address', 'advertisement']).concat(reservedEvents)
     }
 
     this.broadcast = new BroadcastNetwork(options.broadcast, settings)
@@ -152,6 +160,7 @@ export class Discover extends EventEmitter {
     this.dyunicast.on('direct', (data: any[], obj: any, rinfo: dgram.RemoteInfo) => this.emit('direct', data, obj, rinfo))
 
     this.me.weight = options.weight || Discover.weight()
+    this.me.prefMode = MulticommMode.Broadcast
     this.me.isMaster = this.me.isMasterEligible = options.isMasterEligible || false
     this.me.unicastPort = settings.port
     this.me.advertisement = advertisement
@@ -230,6 +239,16 @@ export class Discover extends EventEmitter {
 
       this.helloId = setInterval(async () => await this.hello(), this.helloInterval)
 
+      this.resetId = setInterval(() => {
+        if (this.me.prefMode === MulticommMode.Broadcast) {
+          this.broadcastHelloCounter = 1
+          this.multicastHelloCounter = 0
+        } else {
+          this.broadcastHelloCounter = 0
+          this.multicastHelloCounter = 1
+        }
+      }, this.resetInterval)
+
       resolve(true)
     })
   }
@@ -245,6 +264,7 @@ export class Discover extends EventEmitter {
 
     clearInterval(this.checkId)
     clearInterval(this.helloId)
+    clearInterval(this.resetId)
 
     this.running = false
   }
@@ -397,12 +417,17 @@ export class Discover extends EventEmitter {
     node.id = obj.iid
     switch (mode) {
       case MulticommMode.Broadcast:
+        ++this.broadcastHelloCounter
         node.lastSeenBroadcast = +new Date()
         break
       case MulticommMode.Multicast:
+        ++this.multicastHelloCounter
         node.lastSeenMulticast = +new Date()
         break
     }
+
+    this.me.prefMode = (this.broadcastHelloCounter + 1) >= this.multicastHelloCounter ? MulticommMode.Broadcast : MulticommMode.Multicast
+
     node.address = rinfo.address
     node.unicastPort = data.unicastPort || rinfo.port
     node.hostName = obj.hostName
@@ -410,6 +435,9 @@ export class Discover extends EventEmitter {
     node.isMaster = data.isMaster
     node.isMasterEligible = data.isMasterEligible
     node.weight = data.weight
+    if ('prefMode' in data) {
+      node.prefMode = data.prefMode
+    }
     node.advertisement = data.advertisement
 
     if (isNew) {
