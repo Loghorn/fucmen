@@ -52,6 +52,10 @@ export class Fucmen extends EventEmitter {
     return nodes
   }
 
+  setAdvertisement(advertisement?: any) {
+    return this.discover.setAdvertisement(advertisement)
+  }
+
   setMasterEligible() {
     return this.discover.setMasterEligible()
   }

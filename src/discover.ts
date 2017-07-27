@@ -269,6 +269,11 @@ export class Discover extends EventEmitter {
     this.running = false
   }
 
+  async setAdvertisement(advertisement?: any) {
+    this.me.advertisement = advertisement
+    await this.hello()
+  }
+
   async setMasterEligible() {
     this.me.isMasterEligible = true
     await this.hello()
