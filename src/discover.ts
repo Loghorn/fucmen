@@ -39,7 +39,7 @@ class Node implements INode {
     return this._address
   }
   set address(address: string) {
-    this._address = isLocalIP(address) ? '127.0.0.1' : address
+    this._address = this.hijackLocal && isLocalIP(address) ? '127.0.0.1' : address
   }
 
   private _lastSeenBroadcast: number = 0
@@ -52,6 +52,9 @@ class Node implements INode {
   }
   set lastSeenMulticast(value: number) {
     this._lastSeenMulticast = value
+  }
+
+  constructor(private readonly hijackLocal: boolean) {
   }
 
   preferredMode(timeout: number) {
@@ -104,6 +107,7 @@ export class Discover extends EventEmitter {
   private mastersRequired = 1
 
   private me = new HelloData()
+  private bondToAddress: boolean
   private running = false
   private checkId: NodeJS.Timer
   private helloId: NodeJS.Timer
@@ -133,6 +137,8 @@ export class Discover extends EventEmitter {
     if (this.masterTimeout < this.nodeTimeout) {
       throw new Error('masterTimeout must be greater than or equal to nodeTimeout.')
     }
+
+    this.bondToAddress = !!options.address
 
     const settings = {
       address: options.address || '0.0.0.0',
@@ -416,7 +422,7 @@ export class Discover extends EventEmitter {
      * about the old instance to determine if node was previously a master.
      */
     const isNew = !this.nodes.has(obj.iid)
-    const node = this.nodes.get(obj.iid) || new Node()
+    const node = this.nodes.get(obj.iid) || new Node(!this.bondToAddress)
     const wasMaster = node.isMaster
 
     node.id = obj.iid

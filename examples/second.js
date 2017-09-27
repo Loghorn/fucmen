@@ -2,7 +2,7 @@ var Fucmen = require('..').Fucmen;
 var util = require('util');
 var colors = require('colors');
 
-var fm = new Fucmen({ name: 'test2' }, { port: 11111, key: 'test' });
+var fm = new Fucmen({ name: 'test2' }, { port: 11111, key: 'test', address: '127.0.0.1' });
 
 fm.on('error', console.error);
 fm.on('master', (node) => console.log(('NEW MASTER ' + node.id).white.inverse));

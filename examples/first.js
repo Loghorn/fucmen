@@ -24,6 +24,12 @@ function createFM(weight) {
                     console.log('I want to be MASTER!'.blue.inverse, weight);
                     fm.promote();
                 }, Math.random() * 100000);
+
+                setTimeout(function() {
+                    console.log('RESTART!!!!!!!!!!!!!!!!!!!'.red, weight);
+                    fm.restart();
+                }, Math.random() * 100000);
+
                 resolve(fm)
             });
         }, Math.abs(weight * 5));

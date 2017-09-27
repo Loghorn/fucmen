@@ -43,6 +43,9 @@ export abstract class Network extends EventEmitter {
   }
 
   start() {
+    if (this.socket) {
+      return Promise.resolve()
+    }
     return new Promise<void>((resolve, reject) => {
       this.socket = dgram.createSocket({ type: 'udp4', reuseAddr: this.reuseAddr }, async (data, rinfo) => {
         try {
@@ -63,7 +66,7 @@ export abstract class Network extends EventEmitter {
 
       this.socket.bind(this.port, this.address, () => {
         try {
-          this.bonded()
+          this.bonded(this.address)
           resolve()
         } catch (e) {
           this.emit('error', e)
@@ -85,7 +88,7 @@ export abstract class Network extends EventEmitter {
     }
   }
 
-  protected abstract bonded(): void
+  protected abstract bonded(address: string): void
 
   protected async sendToDest(destination: string, messages: Buffer[], port?: number) {
     if (!this.socket) {
@@ -290,7 +293,45 @@ class MsgBuffer {
   }
 }
 
-export class MulticastNetwork extends Network {
+export class MulticastNetwork extends EventEmitter {
+  private options: NetworkOptions
+  private networks: MulticastNetworkInternal[] = []
+  constructor(private multicastAddress: string = '224.0.2.1', private ttl: number = 1, options: NetworkOptions) {
+    super()
+    this.options = { ...options }
+  }
+
+  async start() {
+    if (this.networks.length) {
+      return Promise.resolve()
+    }
+    if (this.options.address.length === 0 || this.options.address === '0.0.0.0') {
+      const ifaces = _.flatten(_.values(os.networkInterfaces())).filter(x => x.family === 'IPv4' && !x.internal).map(x => x.address)
+      this.networks = ifaces.map((ifaddress) => new MulticastNetworkInternal(this.multicastAddress, this.ttl, { ...this.options, address: ifaddress }))
+    } else {
+      this.networks.push(new MulticastNetworkInternal(this.multicastAddress, this.ttl, this.options))
+    }
+
+    await Promise.all([this.networks.map((n) => n.start())])
+  }
+
+  stop() {
+    this.networks.forEach((n) => n.stop())
+    this.networks = []
+  }
+
+  async send(event: string, ...data: any[]) {
+    await Promise.all([this.networks.map((n) => n.send(event, ...data))])
+  }
+}
+
+declare module 'dgram' {
+  export interface Socket extends EventEmitter {
+    setMulticastInterface(multicastInterface: string): void
+  }
+}
+
+class MulticastNetworkInternal extends Network {
   private multicast: string
   private multicastTTL = 1
   constructor(multicastAddress: string = '224.0.2.1', ttl: number = 1, options: NetworkOptions) {
@@ -300,9 +341,10 @@ export class MulticastNetwork extends Network {
     this.multicastTTL = ttl
   }
 
-  protected bonded() {
+  protected bonded(address: string) {
     // addMembership can throw if there are no interfaces available
-    this.socket && this.socket.addMembership(this.multicast)
+    this.socket && this.socket.addMembership(this.multicast, address)
+    this.socket && this.socket.setMulticastInterface(address)
     this.socket && this.socket.setMulticastTTL(this.multicastTTL)
     this.destinations.add(this.multicast)
   }
@@ -315,7 +357,7 @@ export class BroadcastNetwork extends Network {
     this.broadcast = broadcastAddress
   }
 
-  protected bonded() {
+  protected bonded(address: string) {
     this.socket && this.socket.setBroadcast(true)
     this.destinations.add(this.broadcast)
   }
@@ -355,7 +397,7 @@ export class DynamicUnicastNetwork extends Network {
     }
   }
 
-  protected bonded() {
+  protected bonded(address: string) {
     this.destinations = new Set(this.unicast)
   }
 }

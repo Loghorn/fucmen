@@ -29,7 +29,7 @@ export class Fucmen extends EventEmitter {
     this.discover.on('error', (error: Error) => this.emit('error', error))
     this.discover.on('direct', (data: any[], obj: any, rinfo: dgram.RemoteInfo) => this.emit('direct', data, obj, rinfo))
 
-    this.discover.start().then((started) => started && this.emit('ready'))
+    this.restart().then((started) => started && this.emit('ready'))
   }
 
   get id() {
@@ -98,6 +98,11 @@ export class Fucmen extends EventEmitter {
     } else {
       this.discover.on('direct', (data: any[], obj: any, rinfo: dgram.RemoteInfo) => listener(...data))
     }
+  }
+
+  restart() {
+    this.discover.stop()
+    return this.discover.start()
   }
 
   private getNodeFromId(id: string) {
