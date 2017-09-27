@@ -30,7 +30,7 @@ function createFM(weight) {
                     fm.restart();
                 }, Math.random() * 100000);
 
-                resolve(fm)
+                resolve(fm);
             });
         }, Math.abs(weight * 5));
     });
