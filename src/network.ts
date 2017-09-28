@@ -106,7 +106,7 @@ export abstract class Network extends EventEmitter {
   // tslint:disable-next-line:member-ordering
   private msgWaitingAckBuffers = new Map<string, AckBuffers>()
 
-  protected async prepareMessage(event: string, maxRetries: number, requireAck: false | ((buffers: Buffer[]) => void), ...data: any[]): Promise<[Buffer[], null | Promise<void>]> {
+  protected async prepareMessage(event: string, maxRetries: number, requireAck: false | ((buffers: Buffer[]) => void), ...data: any[]): Promise<[Buffer[], Promise<void>]> {
     const obj = {
       event: event,
       iid: uuid.parse(this.instanceUuid),
@@ -127,13 +127,18 @@ export abstract class Network extends EventEmitter {
       msgs.forEach((m, idx) => m.writeUInt8(idx, 1))
       if (requireAck) {
         const ackBuffers = new AckBuffers(msgs, requireAck, maxRetries)
-        this.msgWaitingAckBuffers.set(uuid.unparse(msgId, 3), ackBuffers)
-        return [msgs, ackBuffers.promise]
+        const msgUid = uuid.unparse(msgId, 3)
+        this.msgWaitingAckBuffers.set(msgUid, ackBuffers)
+        const ackProm = ackBuffers.promise.catch(e => {
+          this.msgWaitingAckBuffers.delete(msgUid)
+          throw e
+        })
+        return [msgs, ackProm]
       } else {
-        return [msgs, null]
+        return [msgs, Promise.resolve()]
       }
     } else {
-      return [[Buffer.concat([Buffer.from([0]), msg], msg.length + 1)], null]
+      return [[Buffer.concat([Buffer.from([0]), msg], msg.length + 1)], Promise.resolve()]
     }
   }
 
@@ -262,6 +267,7 @@ class AckBuffers {
   private startTimer(cbk: (buffers: Buffer[]) => void) {
     this.timer = setTimeout(() => {
       if (++this.retries >= this.maxRetries) {
+        this.buffers.clear()
         this.reject(new Error('Too many retries'))
       } else {
         cbk([...this.buffers.values()])
@@ -393,7 +399,7 @@ export class DynamicUnicastNetwork extends Network {
         await this.sendToDest(destination, buffers, port)
       } : false, ...data)
       await this.sendToDest(destination, contents, port)
-      return completed as Promise<void>
+      return completed
     }
   }
 
