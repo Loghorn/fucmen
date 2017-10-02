@@ -7,7 +7,9 @@ import * as Pack from 'node-pack'
 import * as _ from 'lodash'
 
 declare module 'dgram' {
-  export function createSocket(options: { type: string, reuseAddr?: boolean }, callback?: (msg: Buffer, rinfo: RemoteInfo) => void): Socket
+  export interface Socket extends EventEmitter {
+    setMulticastInterface(multicastInterface: string): void
+  }
 }
 
 const hostName = os.hostname()
@@ -185,10 +187,7 @@ export abstract class Network extends EventEmitter {
           const requireAck = data.readUInt8(2) ? true : false
           const msgId = uuid.unparse(data, 3)
 
-          let buffer = this.msgBuffers.get(msgId)
-          if (!buffer) {
-            buffer = new MsgBuffer(numPackets)
-          }
+          const buffer = this.msgBuffers.get(msgId) || new MsgBuffer(numPackets)
           buffer.buffers.set(idx, data.slice(19))
           if (this.msgBuffers.size > 10) {
             const oldBuffers = [...this.msgBuffers.entries()].filter((e) => e[1].isOld)
@@ -268,7 +267,7 @@ class AckBuffers {
     this.timer = setTimeout(() => {
       if (++this.retries >= this.maxRetries) {
         this.buffers.clear()
-        this.reject(new Error('Too many retries'))
+        this.reject(new Error(`Too many retries: ${this.maxRetries}`))
       } else {
         cbk([...this.buffers.values()])
         this.startTimer(cbk)
@@ -294,8 +293,8 @@ class MsgBuffer {
   }
   get isOld() {
     const age = process.hrtime(this.arrivedAt)
-    // If older than 1 second
-    return age[0] >= 1
+    // If older than 10 second
+    return age[0] >= 10
   }
 }
 
@@ -328,12 +327,6 @@ export class MulticastNetwork extends EventEmitter {
 
   async send(event: string, ...data: any[]) {
     await Promise.all([this.networks.map((n) => n.send(event, ...data))])
-  }
-}
-
-declare module 'dgram' {
-  export interface Socket extends EventEmitter {
-    setMulticastInterface(multicastInterface: string): void
   }
 }
 
