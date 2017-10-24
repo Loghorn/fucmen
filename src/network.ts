@@ -6,12 +6,6 @@ import * as uuid from 'node-uuid'
 import * as Pack from 'node-pack'
 import * as _ from 'lodash'
 
-declare module 'dgram' {
-  export interface Socket extends EventEmitter {
-    setMulticastInterface(multicastInterface: string): void
-  }
-}
-
 const hostName = os.hostname()
 
 export type NetworkOptions = {
@@ -128,14 +122,10 @@ export abstract class Network extends EventEmitter {
       const msgs = chunks.map(c => Buffer.concat([msgId, c], 19 + c.length))
       msgs.forEach((m, idx) => m.writeUInt8(idx, 1))
       if (requireAck) {
-        const ackBuffers = new AckBuffers(msgs, requireAck, maxRetries)
+        const ackBuffers = new AckBuffers(msgs, requireAck, () => this.msgWaitingAckBuffers.delete(msgUid), maxRetries)
         const msgUid = uuid.unparse(msgId, 3)
         this.msgWaitingAckBuffers.set(msgUid, ackBuffers)
-        const ackProm = ackBuffers.promise.catch(e => {
-          this.msgWaitingAckBuffers.delete(msgUid)
-          throw e
-        })
-        return [msgs, ackProm]
+        return [msgs, ackBuffers.promise]
       } else {
         return [msgs, Promise.resolve()]
       }
@@ -237,7 +227,7 @@ class AckBuffers {
   private timer: NodeJS.Timer
   private retries = 0
   private readonly maxRetries: number
-  constructor(buffers: Buffer[], cbk: (buffers: Buffer[]) => void, maxRetries: number) {
+  constructor(buffers: Buffer[], cbk: (buffers: Buffer[]) => void, cbkReject: () => void, maxRetries: number) {
     this.maxRetries = maxRetries
     buffers.forEach((buf, idx) => this.buffers.set(idx, buf))
     this.promise = new Promise<void>((resolve, reject) => {
@@ -245,7 +235,7 @@ class AckBuffers {
       this.reject = reject
     })
 
-    this.startTimer(cbk)
+    this.startTimer(cbk, cbkReject)
   }
 
   processAckPacket(data: Buffer, offset: number) {
@@ -263,14 +253,15 @@ class AckBuffers {
     return completed
   }
 
-  private startTimer(cbk: (buffers: Buffer[]) => void) {
+  private startTimer(cbk: (buffers: Buffer[]) => void, cbkReject: () => void) {
     this.timer = setTimeout(() => {
       if (++this.retries >= this.maxRetries) {
         this.buffers.clear()
+        cbkReject()
         this.reject(new Error(`Too many retries: ${this.maxRetries}`))
       } else {
         cbk([...this.buffers.values()])
-        this.startTimer(cbk)
+        this.startTimer(cbk, cbkReject)
       }
     }, 800)
   }
