@@ -23,7 +23,7 @@ plugins.push(new TypedocWebpackPlugin(
 ))
 
 if (process.env.NODE_ENV === 'production') {
-  plugins.push(new UglifyJSPlugin())
+  plugins.push(new UglifyJSPlugin({ sourceMap: true }))
 }
 
 const entry = join(__dirname, `src/${libraryName}.ts`)
@@ -33,7 +33,6 @@ export default {
     index: entry
   },
   target: 'node',
-  // Currently cheap-module-source-map is broken https://github.com/webpack/webpack/issues/4176
   devtool: 'source-map',
   output: {
     path: join(__dirname, 'dist'),
