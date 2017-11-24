@@ -379,9 +379,9 @@ export class Discover extends EventEmitter {
     const preferUnicast = groups[MulticommMode.Unicast] || []
 
     if (preferBroadcast.length === 0 && preferMulticast.length === 0) {
-      await Promise.all([
+      await Promise.all(
         preferUnicast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, 0, ...obj))
-      ])
+      )
     } else if (preferBroadcast.length >= preferMulticast.length) {
       await Promise.all([
         this.broadcast.send(channel, ...obj),

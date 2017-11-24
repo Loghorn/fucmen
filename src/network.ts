@@ -308,7 +308,7 @@ export class MulticastNetwork extends EventEmitter {
       this.networks.push(new MulticastNetworkInternal(this.multicastAddress, this.ttl, this.options))
     }
 
-    await Promise.all([this.networks.map((n) => n.start())])
+    await Promise.all(this.networks.map((n) => n.start()))
   }
 
   stop() {
@@ -317,7 +317,12 @@ export class MulticastNetwork extends EventEmitter {
   }
 
   async send(event: string, ...data: any[]) {
-    await Promise.all([this.networks.map((n) => n.send(event, ...data))])
+    try {
+      await Promise.all(this.networks.map((n) => n.send(event, ...data)))
+    } catch (e) {
+      console.error(e)
+      throw e
+    }
   }
 }
 
