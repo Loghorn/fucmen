@@ -385,14 +385,14 @@ export class Discover extends EventEmitter {
     } else if (preferBroadcast.length >= preferMulticast.length) {
       await Promise.all([
         this.broadcast.send(channel, ...obj),
-        preferMulticast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, 0, ...obj)),
-        preferUnicast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, 0, ...obj))
+        ...preferMulticast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, 0, ...obj)),
+        ...preferUnicast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, 0, ...obj))
       ])
     } else {
       await Promise.all([
         this.multicast.send(channel, ...obj),
-        preferBroadcast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, 0, ...obj)),
-        preferUnicast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, 0, ...obj))
+        ...preferBroadcast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, 0, ...obj)),
+        ...preferUnicast.map((node) => this.dyunicast.sendTo(node.address, node.unicastPort, channel, 0, ...obj))
       ])
     }
 
