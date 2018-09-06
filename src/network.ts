@@ -189,15 +189,15 @@ export abstract class Network extends EventEmitter {
           this.msgBuffers.set(msgId, buffer)
 
           if (requireAck && this.socket) {
-            const ackBuf = Buffer.allocUnsafe(1 + 16 + 256 / 8)
+            const ackBuf = Buffer.allocUnsafe(1 + 16 + Math.floor(256 / 8))
             ackBuf.writeUInt8(255, 0)
             uuid.parse(msgId, ackBuf, 1)
             ackBuf.fill(0, 17)
             const okPackets = new Set([...buffer.buffers.keys()])
             for (let i = 0; i < numPackets; ++i) {
               if (okPackets.has(i)) {
-                const oldVal = ackBuf.readUInt8(1 + 16 + i / 8)
-                ackBuf.writeUInt8(oldVal | (1 << (i % 8)), 1 + 16 + i / 8)
+                const oldVal = ackBuf.readUInt8(1 + 16 + Math.floor(i / 8))
+                ackBuf.writeUInt8(oldVal | (1 << (i % 8)), 1 + 16 + Math.floor(i / 8))
               }
             }
             this.socket.send(ackBuf, 0, ackBuf.length, rinfo.port, rinfo.address)
@@ -240,7 +240,7 @@ class AckBuffers {
 
   processAckPacket(data: Buffer, offset: number) {
     [...this.buffers.keys()].forEach((k) => {
-      const ackVal = data.readUInt8(offset + k / 8)
+      const ackVal = data.readUInt8(offset + Math.floor(k / 8))
       if (ackVal & (1 << (k % 8))) {
         this.buffers.delete(k)
       }

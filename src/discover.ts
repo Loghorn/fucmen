@@ -243,7 +243,7 @@ export class Discover extends EventEmitter {
         }
       }, this.checkInterval)
 
-      this.helloId = setInterval(async () => await this.hello(), this.helloInterval)
+      this.helloId = setInterval(() => this.hello(), this.helloInterval)
 
       this.resetId = setInterval(() => {
         if (this.me.prefMode === MulticommMode.Broadcast) {

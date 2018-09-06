@@ -9,7 +9,7 @@ fm.on('master', (node) => console.log(('NEW MASTER ' + node.id).white.inverse));
 
 fm.join('test_msg', (from, data) => {
     console.log(from.id.cyan, util.inspect(data, { colors: true }));
-    fm.sendTo(from.id, true,
+    fm.sendTo(from.id, 5,
         'A quite long direct message not fitting in a single packet',
         Buffer.allocUnsafe(2048), // Random data
         data[2]);
