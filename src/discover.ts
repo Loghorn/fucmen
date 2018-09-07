@@ -208,7 +208,7 @@ export class Discover extends EventEmitter {
 
       this.running = true
 
-      this.checkId = setInterval(() => {
+      this.checkId = setInterval(async () => {
         let mastersFound = 0
         let higherWeightFound = false
         let higherWeightMastersFound = 0
@@ -234,11 +234,11 @@ export class Discover extends EventEmitter {
 
         if (this.me.isMasterEligible && !this.me.isMaster) {
           if (mastersFound < this.mastersRequired && !higherWeightFound) {
-            this.promote()
+            await this.promote()
           }
         } else if (this.me.isMaster) {
           if (mastersFound >= this.mastersRequired && higherWeightMastersFound) {
-            this.demote(false)
+            await this.demote(false)
           }
         }
       }, this.checkInterval)
@@ -410,7 +410,7 @@ export class Discover extends EventEmitter {
     return true
   }
 
-  private onHello(data: HelloData, obj: any, rinfo: dgram.RemoteInfo, mode: MulticommMode) {
+  private async onHello(data: HelloData, obj: any, rinfo: dgram.RemoteInfo, mode: MulticommMode) {
     /*
      * When receiving hello messages we need things to happen in the following order:
      *  - make sure the node is in the node list
@@ -468,7 +468,7 @@ export class Discover extends EventEmitter {
         })
 
         if (this.me.isMaster && masterCount > this.mastersRequired && node.weight > this.me.weight) {
-          this.demote(false)
+          await this.demote(false)
         }
 
         this.emit('master', node, obj, rinfo)

@@ -16,7 +16,7 @@ plugins.push(new TypedocWebpackPlugin(
   {
     theme: 'minimal',
     out: 'docs',
-    target: 'es6',
+    target: 'es2016',
     ignoreCompilerErrors: true
   },
   'src'

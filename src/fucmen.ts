@@ -1,5 +1,3 @@
-import 'babel-polyfill'
-
 import { EventEmitter } from 'events'
 import * as dgram from 'dgram'
 
@@ -29,7 +27,7 @@ export class Fucmen extends EventEmitter {
     this.discover.on('error', (error: Error) => this.emit('error', error))
     this.discover.on('direct', (data: any[], obj: any, rinfo: dgram.RemoteInfo) => this.emit('direct', data, obj, rinfo))
 
-    this.restart().then((started) => started && this.emit('ready'))
+    this.restart().then((started) => started && this.emit('ready')).catch((err) => { throw err })
   }
 
   get id() {
