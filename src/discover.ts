@@ -478,5 +478,9 @@ export class Discover extends EventEmitter {
 }
 
 function isLocalIP(ip: string) {
-  return _.flatten(_.values(os.networkInterfaces())).filter((iface) => iface.family === 'IPv4' && iface.internal === false).some(({ address }) => address === ip)
+  try {
+    return _.flatten(_.values(os.networkInterfaces())).filter((iface) => iface.family === 'IPv4' && iface.internal === false).some(({ address }) => address === ip)
+  } catch {
+    return true
+  }
 }
